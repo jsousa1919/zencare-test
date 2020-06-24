@@ -1,0 +1,30 @@
+$breakpoints: (
+    "p-320"    :    320px,
+    "p-400"    :    400px,
+    "p-480"    :    480px,
+    "p-576"    :    576px,
+    "p-640"    :    640px,
+    "t-768"    :    768px,
+    "t-992"    :    992px,
+    "t-1025"   :    1025px,
+    "d-1200"   :    1200px,
+    "desktop"  :    1248px,
+    "mac"      :    1280px,
+    "lap-1302" :    1302px,
+    "d-wide1"  :    1336px,
+    "d-wide"   :    1440px,
+    "d-large"   :    1680px
+);
+@mixin mq($width, $type: min) {
+  @if map_has_key($breakpoints, $width) {
+    $width: map_get($breakpoints, $width);
+    @if $type == max {
+      $width: $width - 1px;
+    }
+    @media only screen and (#{$type}-width: $width) {
+      @content;
+    }
+  }
+}
+
+
