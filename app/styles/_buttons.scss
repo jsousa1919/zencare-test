@@ -1,5 +1,15 @@
 .btn {
+  background-color: green;
+  border: 1px solid darken(green, 30%);
+  border-radius: 0.2rem;
+  display: inline-block;
+  color: white;
+  padding: 0.5rem;
 
+  &:hover {
+    background-color: darken(green, 10%);
+    cursor: pointer;
+  }
 }
 
 

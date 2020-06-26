@@ -15,6 +15,7 @@ $breakpoints: (
     "d-wide"   :    1440px,
     "d-large"   :    1680px
 );
+
 @mixin mq($width, $type: min) {
   @if map_has_key($breakpoints, $width) {
     $width: map_get($breakpoints, $width);

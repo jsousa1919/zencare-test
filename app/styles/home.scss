@@ -1,10 +1,51 @@
 @import './colors';
-@import './mixins';
 @import './fonts';
 @import './buttons';
+@import './mixins';
 
 .zencare-app {
-  color: lightblue;
+  font-size: 16px;
+
+  &__placeholder {
+    color: lightblue;
+    font-weight: bold;
+  }
+
+  &__fake {
+    $fake-body: &;
+    margin-top: 1rem;
+
+    &__msg {
+      color: red;
+      font-weight: bold;
+      display: inline-block;
+      opacity: 0;
+      transition: opacity 0.5s linear;
+
+      @at-root #{$fake-body}--clicked & {
+        opacity: 1;
+      }
+    }
+
+    &__button {
+      max-height: 3rem;
+      max-width: 5rem;
+      opacity: 1;
+      transition: max-width 0.5s linear, max-height 0.5s linear, padding 0.5s linear, opacity 0.5s linear;
+
+      @at-root #{$fake-body}--clicked & {
+        max-height: 0;
+        max-width: 0;
+        opacity: 0;
+        padding: 0;
+
+        &:hover {
+          cursor: default;
+        }
+      }
+
+    }
+  }
 }
 
 
