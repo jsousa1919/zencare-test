@@ -3,49 +3,138 @@
 @import './buttons';
 @import './mixins';
 
-.zencare-app {
+.zca {
+  color: black;
   font-size: 16px;
+  
+  &__game {
+    background-color: lightblue;
+    color: white;
+    padding: 2rem;
+    position: relative;
+    text-align: center;
+    white-space: nowrap;
+    width: 100%;
 
-  &__placeholder {
-    color: lightblue;
-    font-weight: bold;
-  }
-
-  &__fake {
-    $fake-body: &;
-    margin-top: 1rem;
-
-    &__msg {
-      color: red;
+    &__header {
       font-weight: bold;
-      display: inline-block;
-      opacity: 0;
-      transition: opacity 0.5s linear;
+      margin: 1rem auto;
+      
+      &__title {
+        font-size: 2rem;
+      }
 
-      @at-root #{$fake-body}--clicked & {
-        opacity: 1;
+      &__subtitle {
+        font-size: 3rem;
       }
     }
 
-    &__button {
-      max-height: 3rem;
-      max-width: 5rem;
-      opacity: 1;
-      transition: max-width 0.5s linear, max-height 0.5s linear, padding 0.5s linear, opacity 0.5s linear;
+    &__arena {
+      background-color: white;
+      border-radius: 1rem;
+      margin: 0 auto;
+      padding: 1rem;
+      position: relative;
+      width: 80%;
 
-      @at-root #{$fake-body}--clicked & {
-        max-height: 0;
-        max-width: 0;
-        opacity: 0;
-        padding: 0;
+      &__opt {
+        display: inline-block;
+        position: relative;
+        width: 48%;
 
-        &:hover {
-          cursor: default;
+        &:last-child {
+          margin-left: 2%;
+        }
+
+        img {
+          width: 100%;
+          cursor: pointer;
+        }
+
+        &__check {
+          border: 0.5rem;
+          border-radius: 50%;
+          color: white;
+          display: none;
+          height: 3rem;
+          position: absolute;
+          right: 20%;
+          top: 10%;
+          width: 3rem;
+        }
+      }
+    }
+
+    &__footer {
+      margin-top: 3rem;
+    }
+  }
+
+  &__results {
+    background-color: lightgrey;
+    padding: 3rem;
+    text-align: center;
+
+    &__header {
+      font-weight: bold;
+      font-size: 2rem;
+    }
+
+    &__listing {
+      background-color: white;
+      border: 0.5rem solid lightblue;
+      border-radius: 0.5rem;
+      display: table;
+      margin: 0 auto;
+      width: 80%;
+
+      &__row {
+        display: table-row;
+
+        > * {
+          display: table-cell;
+        }
+      }
+    }
+
+    &__new {
+      margin-top: 2rem;
+
+      &__header {
+        font-weight: bold;
+        font-size: 2rem;
+      }
+    
+      &__params {
+        > * {
+          display: inline-block;
+
+          input {
+            border: solid 0.25rem lightblue;
+            border-radius: 0.1rem;
+            display: block;
+            padding: 0.25rem;
+          }
+
+          &:not(:first-child) {
+            margin-left: 0.5rem;
+          }
         }
       }
 
+      &__start {
+        background-color: lightblue;
+        padding: 0.5rem;
+        border-radius: 0.1rem;
+
+        &:hover {
+          background-color: lighten(lightblue, 20%);
+          cursor: pointer;
+        }
+      }
     }
   }
 }
+
 
 
