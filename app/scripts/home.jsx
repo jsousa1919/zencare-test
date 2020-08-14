@@ -10,22 +10,30 @@ import style from '../styles/home.scss';
 const PB_URL = 'https://pixabay.com/api/';
 const PB_KEY = '13118174-cea0197aef7a0de714a90d9e3';
 
+const DEFAULT_STATE = {
+  currentResults: [],
+  currentRound: 1,
+  currentMatchup: [],
+  requestingResults: false,
+  offset: 0,
+  endBarrier: null,
+  choiceIndices: [null, null],
+  error: null,
+  finished: false,
+  reverse: false,
+};
+
 class ZencareApp extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      currentResults: [],
-      currentRound: 0,
-      currentMatchup: [],
-      offset: 0,
-      seenMatches: {},
       params: {
-        query: '',
-        totalRounds: 0,
-        itemCount: 0,
+        query: 'kitten',
+        totalRounds: 10,
+        itemCount: 5,
       },
-      error: null,
+      ...DEFAULT_STATE,
     };
 
     this.requestResults = this.requestResults.bind(this);
@@ -43,6 +51,7 @@ class ZencareApp extends Component {
         q: query,
         key: PB_KEY,
         image_type: 'photo',
+        per_page: itemCount,
         pretty: 'true'
       },
     }).then(res => {
@@ -56,7 +65,13 @@ class ZencareApp extends Component {
         hits,
       } = res.data;
 
-      const currentResults = hits.slice(Number.parseInt(itemCount)).map(item => {
+      if (!hits.length) {
+        this.setState(() => ({
+          error: 'No results found',
+        }));
+      }
+
+      const currentResults = hits.map(item => {
         const {
           id,
           previewURL,
@@ -73,26 +88,37 @@ class ZencareApp extends Component {
       });
 
       this.setState(() => ({
+        requestingResults: false,
         currentResults,
         currentRound: 1,
-        offset: 1
+        offset: 0,
+        endBarrier: currentResults.length - 1,
+        reverse: false,
+        choiceIndices: [0, currentResults.length - 1],
       }));
     });
   }
 
   chooseItem(choices, item) {
-    this.setState(prevState => {
+    this.setState((prevState) => {
       const {
         currentResults,
         currentRound,
-        seenMatches,
-        offset,
         params,
+        choiceIndices,
       } = prevState;
 
-      if (currentRound >= params.totalRounds) {
-        return null;
-      }
+      const {
+        totalRounds,
+      } = params;
+
+      let {
+        offset,
+        endBarrier,
+        reverse,
+      } = prevState;
+
+      let [firstIdx, lastIdx] = choiceIndices;
 
       choices.forEach(x => {
         x.views += 1;
@@ -100,14 +126,43 @@ class ZencareApp extends Component {
 
       item.wins += 1;
 
-      seenMatches[`${choices[0].id}-${choices[1]}.id`] = true;
+      if (currentRound === totalRounds) {
+        return {
+          finished: true,
+        };
+      } else if (offset >= (endBarrier - 1)) {
+        endBarrier -= 1;
+        if (endBarrier <= 1) {
+          return {
+            finished: true,
+          }
+        }
+        offset = 0;
+        reverse = !reverse;
+        firstIdx = 0;
+        lastIdx = endBarrier;
+      } else if (firstIdx >= lastIdx - 2) {
+        offset += 1;
+        if (reverse) {
+          firstIdx = 0;
+          lastIdx = endBarrier - offset;
+        } else {
+          firstIdx = offset;
+          lastIdx = endBarrier;
+        }
+      } else {
+        firstIdx += 1;
+        lastIdx -= 1;
+      }
 
       return {
         currentRound: currentRound + 1,
-        offset: offset + 1,
-        seenMatches
+        offset,
+        endBarrier,
+        reverse,
+        choiceIndices: [firstIdx, lastIdx],
       };
-    })
+    });
   }
 
   renderChoices(choices) {
@@ -119,7 +174,7 @@ class ZencareApp extends Component {
       totalRounds,
     } = this.state.params;
 
-    if (Number.parseInt(currentRound) >= Number.parseInt(totalRounds)) {
+    if (currentRound > totalRounds) {
       return null;
     }
 
@@ -145,6 +200,9 @@ class ZencareApp extends Component {
       currentResults,
       currentRound,
       offset,
+      choiceIndices,
+      finished,
+      requestingResults,
     } = this.state;
 
     const {
@@ -152,31 +210,36 @@ class ZencareApp extends Component {
       query,
     } = params;
 
-    const resLength = currentResults.length;
+    const [firstIdx, lastIdx] = choiceIndices;
 
-    const choiceIdxOne = currentRound % resLength;
-    const choiceIdxTwo = (currentRound + offset) % resLength;
-
-    let choices = [];
-    if (currentResults.length) {
-      choices = [currentResults[choiceIdxOne], currentResults[choiceIdxTwo]];
+    let choices;
+    if (currentResults.length && firstIdx !== null && lastIdx !== null) {
+      choices = [currentResults[firstIdx], currentResults[lastIdx]];
     }
+
+    const titleQuery = query.toLowerCase().split(' ').map(w => w ? (w[0].toUpperCase() + w.slice(1)) : '').join(' ');
 
     return (
       <div className="zca__game">
         <div className="zca__game__header">
           <div className="zca__game__header__title">
-            {query || 'COUCH'} FACEOFF
+            {titleQuery} FACEOFF
           </div>
           {choices && (
             <div className="zca__game__header__subtitle">
-              Pick the best {query}
+              Pick the best{(' ' + query) || '...'}
             </div>
           )}
         </div>
-        {choices && this.renderChoices(choices)}
+        {(choices && !(finished || requestingResults)) && this.renderChoices(choices)}
         <div className="zca__game__footer">
-          {Number.parseInt(totalRounds) - Number.parseInt(currentRound)} matchups remaining
+          {finished && (
+            <span>Finished!</span>
+          ) || requestingResults && (
+            <span>Loading...</span>
+          ) || choices && (
+            <span>{(totalRounds - currentRound) + 1} matchups remaining</span>
+          )}
         </div>
       </div>
     );
@@ -188,28 +251,41 @@ class ZencareApp extends Component {
       currentRound,
     } = this.state;
 
-    const listItems = currentResults.reduce((acc, item) => {
+    let listItems = currentResults.reduce((acc, item) => {
       if (item.views) {
         return [...acc, item];
       }
       return acc;
     }, []);
 
+    if (!listItems.length) {
+      return null;
+    }
+
+    const calcWinRate = (item => (Number.parseFloat(item.wins) / Number.parseFloat(item.views)));
+
+    listItems.sort((a, b) => calcWinRate(a) > calcWinRate(b) ? -1 : 1);
+
     const listBlocks = listItems.map((item, idx) => (
       <div className="zca__results__listing__row">
-        <div>{idx}</div>
+        <div>{idx + 1}</div>
         <div>
           <img src={item.previewURL} />
         </div>
         <div>{item.views} matchups</div>
-        <div>{(Number.parseFloat(item.wins) / Number.parseFloat(item.views)) * 100}% win rate</div>
+        <div>{(calcWinRate(item) * 100).toFixed(2)}% win rate</div>
       </div>
     ));
 
-    return (
-      <div className="zca__results__listing">
-        {listBlocks}
-      </div>
+    return ( 
+      <>
+        <div className="zca__results__header">
+          Live Results
+        </div>
+        <div className="zca__results__listing">
+          {listBlocks}
+        </div>
+      </>
     );
   }
         
@@ -219,17 +295,49 @@ class ZencareApp extends Component {
       params: {
         ...prevState.params,
         [field]: value,
+        error: null,
       },
     }));
   }
 
   startNew() {
-    this.requestResults();
+    this.setState((prevState) => {
+      let {
+        query,
+        totalRounds,
+        itemCount,
+      } = prevState.params;
+
+      totalRounds = Number.parseInt(totalRounds);
+      itemCount = Number.parseInt(itemCount);
+
+      if (isNaN(totalRounds) || totalRounds < 1) {
+        return {
+          error: 'Total Matchups must be at least 1',
+        };
+      } else if (isNaN(itemCount) || itemCount < 3 || itemCount > 20) {
+        return {
+          error: 'Max Entrants must be between 3 and 20',
+        };
+      } else if (query && totalRounds && itemCount) {
+        this.requestResults();
+        return {
+          error: null,
+          finished: false,
+          requestingResults: true,
+        };
+      } else {
+        return {
+          error: 'Missing required fields',
+        };
+      }
+    });
   }
 
   renderNew() {
     const {
       params,
+      error,
     } = this.state;
 
     const {
@@ -237,6 +345,12 @@ class ZencareApp extends Component {
       totalRounds,
       itemCount,
     } = params;
+
+    const handleKeyPress = (key) => {
+      if (key === 13) {
+        this.startNew();
+      }
+    };
 
     return (
       <div className="zca__results__new">
@@ -246,20 +360,23 @@ class ZencareApp extends Component {
         <div className="zca__results__new__params">
           <div>
             <div>Search Term</div>
-            <input type="text" value={query} onChange={event => this.onChangeParam('query', event.target.value)} />
+            <input type="text" value={query} onChange={event => this.onChangeParam('query', event.target.value)} onKeyPress={e => handleKeyPress(e.charCode)} />
           </div>
           <div>
             <div>Max Entrants</div>
-            <input type="text" value={itemCount} onChange={event => this.onChangeParam('itemCount', event.target.value)} />
+            <input type="text" value={itemCount} onChange={event => this.onChangeParam('itemCount', event.target.value)} onKeyPress={e => handleKeyPress(e.charCode)} />
           </div>
           <div>
             <div>Total Matchups</div>
-            <input type="text" value={totalRounds} onChange={event => this.onChangeParam('totalRounds', event.target.value)} />
+            <input type="text" value={totalRounds} onChange={event => this.onChangeParam('totalRounds', event.target.value)} onKeyPress={e => handleKeyPress(e.charCode)} />
           </div>
           <div>
             <div className="zca__results__new__start" onClick={() => this.startNew()}>Start!</div>
           </div>
         </div>
+        {error && (
+          <div className="zca__results__new__error">{error}</div>
+        )}
       </div>
     );
   }
@@ -269,9 +386,6 @@ class ZencareApp extends Component {
       <div className="zca">
         {this.renderGame()}
         <div className="zca__results">
-          <div className="zca__results__header">
-            Live Results
-          </div>
           {this.renderRankings()}
           {this.renderNew()}
         </div> 

@@ -8,6 +8,7 @@
   font-size: 16px;
   
   &__game {
+    box-sizing: border-box;
     background-color: lightblue;
     color: white;
     padding: 2rem;
@@ -41,6 +42,7 @@
         display: inline-block;
         position: relative;
         width: 48%;
+        vertical-align: middle;
 
         &:last-child {
           margin-left: 2%;
@@ -86,6 +88,7 @@
       border-radius: 0.5rem;
       display: table;
       margin: 0 auto;
+      padding: 1rem;
       width: 80%;
 
       &__row {
@@ -131,6 +134,11 @@
           background-color: lighten(lightblue, 20%);
           cursor: pointer;
         }
+      }
+
+      &__error {
+        color: red;
+        font-weight: bold;
       }
     }
   }
